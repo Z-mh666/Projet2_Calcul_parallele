@@ -24,8 +24,8 @@ int main(int argc, char* argv[])
     double x = mesh.coords(i,0);
     double y = mesh.coords(i,1);
     uNum(i) = 0.;
-    uExa(i) = x+y;
-    f(i) = x+y;
+    uExa(i) = cos(2*M_PI*x)*cos(3*M_PI*y);
+    f(i) = (1+13*M_PI*M_PI)*cos(2*M_PI*x)*cos(3*M_PI*y);
   }
   
   Problem pbm;
@@ -33,12 +33,13 @@ int main(int argc, char* argv[])
   buildProblem(pbm,mesh,alpha,f);
   
   // 4. Solve problem
-  double tol = 1e-9; // (Currently useless)
-  int maxit = 1000;
+  double tol = 1e-6; // (Currently useless)
+  int maxit = 10000;
   jacobi(pbm.A, pbm.b, uNum, mesh, tol, maxit);
   
   // 5. Compute error and export fields
   Vector uErr = uNum - uExa;
+  normL2(pbm.M,uErr,mesh);
   saveToMsh(uNum, mesh, "solNum", "benchmark/solNum.msh");
   saveToMsh(uExa, mesh, "solRef", "benchmark/solExa.msh");
   saveToMsh(uErr, mesh, "solErr", "benchmark/solErr.msh");
