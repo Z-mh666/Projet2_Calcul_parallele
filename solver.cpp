@@ -30,7 +30,8 @@ void jacobi(SpMatrix& A, Vector& b, Vector& u, Mesh& mesh, double tol, int maxit
   double residuNorm = 1e2;
   int it = 0;
   Vector w(size);
-  while (residuNorm > tol && it < maxit){
+  Vector Au(size);
+  while (it < maxit){
     
     // Compute N*u
     Vector Nu = N*u;
@@ -44,17 +45,19 @@ void jacobi(SpMatrix& A, Vector& b, Vector& u, Mesh& mesh, double tol, int maxit
     // Update residual and iterator
     
     if((it % 10) == 0){
-      double residu = 0;
-      Vector Au = A*u;
+      residuNorm = 0;
+      Au = A*u;
       exchangeAddInterfMPI(Au, mesh);
       
       for (int i=0;i<size;i++){
         w(i) = b(i)-Au(i);
-        residu += w(i)*w(i);
+        residuNorm += w(i)*w(i);
       }
-  
+
+      residuNorm = sqrt(residuNorm);
+
       if(myRank == 0){
-        printf("\r   %i %e", it, residu);
+        printf("\r   %i %e", it, residuNorm);
       }
     }
     it++;
@@ -64,6 +67,7 @@ void jacobi(SpMatrix& A, Vector& b, Vector& u, Mesh& mesh, double tol, int maxit
     printf("\r   -> final iteration: %i (prescribed max: %i)\n", it, maxit);
     printf("   -> final residual: %e (prescribed tol: %e)\n", residuNorm, tol);
   }
+  saveToMsh(w, mesh, "merde", "benchmark/merde.msh");
 }
 
 void normL2(SpMatrix& M,Vector& v,Mesh& mesh)
@@ -81,3 +85,5 @@ void normL2(SpMatrix& M,Vector& v,Mesh& mesh)
     printf("   -> final L2 error: %e\n",sqrt(r));
   }
 }
+
+
