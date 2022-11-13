@@ -36,6 +36,7 @@ int main(int argc, char* argv[])
   double tol = 1e-6; // (Currently useless)
   int maxit = 10000;
   jacobi(pbm.A, pbm.b, uNum, mesh, tol, maxit);
+  //Gradconj(pbm.A, pbm.b, uNum, mesh, tol, maxit);
   
   // 5. Compute error and export fields
   Vector uErr = uNum - uExa;
@@ -50,4 +51,3 @@ int main(int argc, char* argv[])
   
   return 0;
 }
-
