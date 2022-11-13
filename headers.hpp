@@ -76,4 +76,16 @@ void buildProblem(Problem& p, Mesh& mesh, double alpha, Vector& f);
 // Solution of the system Au=b with Jacobi
 void jacobi(SpMatrix& A, Vector& b, Vector& u, Mesh& mesh, double tol, int maxit);
 
+// Error 2-norm of the solution
+void norm2(SpMatrix& A,Vector& u, Vector& b);
+
+// Error L2-norm of the solution
+void normL2(SpMatrix& M,Vector& v,Mesh& mesh);
+
+// gradient conjugue
+void Gradconj(SpMatrix& A, Vector& b, Vector& u0, Mesh& mesh, double tol, int maxit);
+
+// parallelisation du produit scalaire
+double para_ps(Vector &u,Vector &v,Mesh &mesh);
+
 #endif /* HEADERS_HPP */
