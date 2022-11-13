@@ -7,54 +7,64 @@ extern int nbTasks;
 // Build the local numbering and list of nodes for MPI communications
 //================================================================================
 
-void buildListsNodesMPI(Mesh& mesh)
+void buildListsNodesMPI(Mesh &mesh)
 {
-  if(myRank == 0)
+  if (myRank == 0)
     printf("== build local numbering and list of nodes for MPI communications\n");
 
   //==== Build mask for nodes belonging to each MPI process (i.e. interior + interface)
-  
+
   IntMatrix maskNodesEachProc(nbTasks, mesh.nbOfNodes);
-  for(int nTask=0; nTask<nbTasks; nTask++){
-    for(int nGlo=0; nGlo<mesh.nbOfNodes; nGlo++){
-      maskNodesEachProc(nTask,nGlo) = 0;
+  for (int nTask = 0; nTask < nbTasks; nTask++)
+  {
+    for (int nGlo = 0; nGlo < mesh.nbOfNodes; nGlo++)
+    {
+      maskNodesEachProc(nTask, nGlo) = 0;
     }
   }
-  for(int iTriGlo=0; iTriGlo<mesh.nbOfTri; iTriGlo++){
+  for (int iTriGlo = 0; iTriGlo < mesh.nbOfTri; iTriGlo++)
+  {
     int nTask = mesh.triPart(iTriGlo);
-    int nGlo0 = mesh.triNodes(iTriGlo,0);
-    int nGlo1 = mesh.triNodes(iTriGlo,1);
-    int nGlo2 = mesh.triNodes(iTriGlo,2);
-    maskNodesEachProc(nTask,nGlo0) = 1;
-    maskNodesEachProc(nTask,nGlo1) = 1;
-    maskNodesEachProc(nTask,nGlo2) = 1;
+    int nGlo0 = mesh.triNodes(iTriGlo, 0);
+    int nGlo1 = mesh.triNodes(iTriGlo, 1);
+    int nGlo2 = mesh.triNodes(iTriGlo, 2);
+    maskNodesEachProc(nTask, nGlo0) = 1;
+    maskNodesEachProc(nTask, nGlo1) = 1;
+    maskNodesEachProc(nTask, nGlo2) = 1;
   }
-  
+
   //==== Build local numbering for nodes belonging to the current MPI process (i.e. interior + interfaces)
-  
+
   IntVector nodesGloToLoc(mesh.nbOfNodes);
   int nLoc = 0;
-  for(int nGlo=0; nGlo<mesh.nbOfNodes; nGlo++){
-    if(maskNodesEachProc(myRank, nGlo)){
-      nodesGloToLoc(nGlo) = nLoc;  // this node belongs to the current MPI process
+  for (int nGlo = 0; nGlo < mesh.nbOfNodes; nGlo++)
+  {
+    if (maskNodesEachProc(myRank, nGlo))
+    {
+      nodesGloToLoc(nGlo) = nLoc; // this node belongs to the current MPI process
       nLoc++;
     }
-    else{
-      nodesGloToLoc(nGlo) = -1;  // this node does not belong to the current MPI process
+    else
+    {
+      nodesGloToLoc(nGlo) = -1; // this node does not belong to the current MPI process
     }
   }
-  
+
   //==== Build list with nodes to exchange between the current MPI process and each neighboring MPI process (i.e. interfaces)
-  
+
   mesh.numNodesToExch.resize(nbTasks);
-  mesh.nodesToExch.resize(nbTasks,mesh.nbOfNodes);
-  for(int nTask=0; nTask<nbTasks; nTask++){
+  mesh.nodesToExch.resize(nbTasks, mesh.nbOfNodes);
+  for (int nTask = 0; nTask < nbTasks; nTask++)
+  {
     mesh.numNodesToExch(nTask) = 0;
-    if(nTask != myRank){
+    if (nTask != myRank)
+    {
       int count = 0;
-      for(int nGlo=0; nGlo<mesh.nbOfNodes; nGlo++){
-        if(maskNodesEachProc(myRank,nGlo) && maskNodesEachProc(nTask,nGlo)){
-          mesh.nodesToExch(nTask,count) = nodesGloToLoc(nGlo);
+      for (int nGlo = 0; nGlo < mesh.nbOfNodes; nGlo++)
+      {
+        if (maskNodesEachProc(myRank, nGlo) && maskNodesEachProc(nTask, nGlo))
+        {
+          mesh.nodesToExch(nTask, count) = nodesGloToLoc(nGlo);
           count++;
         }
       }
@@ -62,44 +72,49 @@ void buildListsNodesMPI(Mesh& mesh)
       printf("   -> task %i send/recv %i nodes with task %i\n", myRank, mesh.numNodesToExch(nTask), nTask);
     }
   }
-  if(mesh.numNodesToExch.maxCoeff() > 0){
+  if (mesh.numNodesToExch.maxCoeff() > 0)
+  {
     mesh.nodesToExch.conservativeResize(nbTasks, mesh.numNodesToExch.maxCoeff());
   }
-  
+
   //==== Build local arrays for nodes/triangles
-  
-  Matrix    coordsMyRank(mesh.nbOfNodes,3);
+
+  Matrix coordsMyRank(mesh.nbOfNodes, 3);
   IntVector triNumMyRank(mesh.nbOfTri);
-  IntMatrix triNodesMyRank(mesh.nbOfTri,3);
-  
+  IntMatrix triNodesMyRank(mesh.nbOfTri, 3);
+
   nLoc = 0;
   int iLinLoc = 0;
   int iTriLoc = 0;
-  for(int nGlo=0; nGlo<mesh.nbOfNodes; nGlo++){
-    if(nodesGloToLoc(nGlo) >= 0){
-      coordsMyRank(nLoc,0) = mesh.coords(nGlo,0);
-      coordsMyRank(nLoc,1) = mesh.coords(nGlo,1);
-      coordsMyRank(nLoc,2) = mesh.coords(nGlo,2);
+  for (int nGlo = 0; nGlo < mesh.nbOfNodes; nGlo++)
+  {
+    if (nodesGloToLoc(nGlo) >= 0)
+    {
+      coordsMyRank(nLoc, 0) = mesh.coords(nGlo, 0);
+      coordsMyRank(nLoc, 1) = mesh.coords(nGlo, 1);
+      coordsMyRank(nLoc, 2) = mesh.coords(nGlo, 2);
       nLoc++;
     }
   }
-  for(int iTriGlo=0; iTriGlo<mesh.nbOfTri; iTriGlo++){
-    if(mesh.triPart(iTriGlo) == myRank){
+  for (int iTriGlo = 0; iTriGlo < mesh.nbOfTri; iTriGlo++)
+  {
+    if (mesh.triPart(iTriGlo) == myRank)
+    {
       triNumMyRank(iTriLoc) = mesh.triNum(iTriGlo);
-      triNodesMyRank(iTriLoc,0) = nodesGloToLoc(mesh.triNodes(iTriGlo,0));
-      triNodesMyRank(iTriLoc,1) = nodesGloToLoc(mesh.triNodes(iTriGlo,1));
-      triNodesMyRank(iTriLoc,2) = nodesGloToLoc(mesh.triNodes(iTriGlo,2));
+      triNodesMyRank(iTriLoc, 0) = nodesGloToLoc(mesh.triNodes(iTriGlo, 0));
+      triNodesMyRank(iTriLoc, 1) = nodesGloToLoc(mesh.triNodes(iTriGlo, 1));
+      triNodesMyRank(iTriLoc, 2) = nodesGloToLoc(mesh.triNodes(iTriGlo, 2));
       iTriLoc++;
     }
   }
-  
-  coordsMyRank.conservativeResize(nLoc,3);
+
+  coordsMyRank.conservativeResize(nLoc, 3);
   triNumMyRank.conservativeResize(iTriLoc);
-  triNodesMyRank.conservativeResize(iTriLoc,3);
-  
+  triNodesMyRank.conservativeResize(iTriLoc, 3);
+
   mesh.nbOfNodes = nLoc;
   mesh.nbOfTri = iTriLoc;
-  
+
   mesh.coords = coordsMyRank;
   mesh.triNum = triNumMyRank;
   mesh.triNodes = triNodesMyRank;
@@ -109,45 +124,129 @@ void buildListsNodesMPI(Mesh& mesh)
 // MPI-parallel exchange/add the interface terms
 //================================================================================
 
-void exchangeAddInterfMPI(Vector& vec, Mesh& mesh)
+void exchangeAddInterfMPI(Vector &vec, Mesh &mesh)
 {
   MPI_Request *requestSnd;
   MPI_Request *requestRcv;
   MPI_Status status;
   requestSnd = new MPI_Request[nbTasks];
   requestRcv = new MPI_Request[nbTasks];
-  
+
   double **bufferSnd;
   double **bufferRcv;
-  bufferSnd = new double*[nbTasks];
-  bufferRcv = new double*[nbTasks];
-  
-  for(int nTask=0; nTask<nbTasks; nTask++){
+  bufferSnd = new double *[nbTasks];
+  bufferRcv = new double *[nbTasks];
+
+  for (int nTask = 0; nTask < nbTasks; nTask++)
+  {
     int numToExch = mesh.numNodesToExch(nTask);
-    if(numToExch > 0){
+    if (numToExch > 0)
+    {
       bufferSnd[nTask] = new double[numToExch];
       bufferRcv[nTask] = new double[numToExch];
-      for(int nExch=0; nExch<numToExch; nExch++)
-        bufferSnd[nTask][nExch] = vec(mesh.nodesToExch(nTask,nExch));
+      for (int nExch = 0; nExch < numToExch; nExch++)
+        bufferSnd[nTask][nExch] = vec(mesh.nodesToExch(nTask, nExch));
       MPI_Isend(bufferSnd[nTask], numToExch, MPI_DOUBLE, nTask, 0, MPI_COMM_WORLD, &requestSnd[nTask]);
       MPI_Irecv(bufferRcv[nTask], numToExch, MPI_DOUBLE, nTask, 0, MPI_COMM_WORLD, &requestRcv[nTask]);
     }
   }
-  
-  for(int nTask=0; nTask<nbTasks; nTask++){
+
+  for (int nTask = 0; nTask < nbTasks; nTask++)
+  {
     int numToExch = mesh.numNodesToExch(nTask);
-    if(numToExch > 0){
+    if (numToExch > 0)
+    {
       MPI_Wait(&requestRcv[nTask], &status);
-      for(int nExch=0; nExch<numToExch; nExch++)
-        vec(mesh.nodesToExch(nTask,nExch)) += bufferRcv[nTask][nExch];
+      for (int nExch = 0; nExch < numToExch; nExch++)
+        vec(mesh.nodesToExch(nTask, nExch)) += bufferRcv[nTask][nExch];
+      delete bufferRcv[nTask];
+      MPI_Wait(&requestSnd[nTask], &status);
+      delete bufferSnd[nTask];
+    }
+  }
+
+  delete[] bufferSnd;
+  delete[] bufferRcv;
+  delete requestSnd;
+  delete requestRcv;
+}
+
+double para_ps(Vector &u,Vector &v,Mesh &mesh){
+
+  MPI_Request *requestSnd;
+  MPI_Request *requestRcv;
+  MPI_Status status;
+  requestSnd = new MPI_Request[nbTasks];
+  requestRcv = new MPI_Request[nbTasks];
+
+  double **bufferSnd;
+  double **bufferRcv;
+  bufferSnd = new double *[nbTasks];
+  bufferRcv = new double *[nbTasks];
+
+  Vector uu = 1*u;   //copy vector u
+  Vector vv = 1*v;   //copy vector v
+  double val = 0;    //valeur de produit scalaire sur l'interface
+  double val_final = 0;
+  double r = 0;      //valeur de produit scalaire <u,v>
+  int counter = 1;
+
+// trouver les noeuds de l'interface qui est calcule plus que 2 fois
+  for (int i=0;i<nbTasks;i++){
+    for (int j=0;j<mesh.nodesToExch.outerSize();j++){
+      if (i<nbTasks-1){  
+        counter = 1;    //reset counter
+        for(int k=i+1;k<nbTasks;k++){
+          for (int l=0;l<mesh.nodesToExch.outerSize();l++){
+            if (mesh.nodesToExch(i,j)==mesh.nodesToExch(k,l)){
+              counter += 1;
+              if (counter>=2 && mesh.nodesToExch(i,j) != 0){
+                val -= (counter-1)*uu(mesh.nodesToExch(i,j))*vv(mesh.nodesToExch(i,j));  //faire difference
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  //calculer le produit scalaire sur l'interface et remplir la valeur 0 sur l'interface pour uu et vv
+  for (int nTask = 0; nTask < nbTasks; nTask++)
+  {
+    int numToClear = mesh.numNodesToExch(nTask);
+    if (numToClear > 0)
+    {
+      bufferSnd[nTask] = new double[numToClear];
+      bufferRcv[nTask] = new double[numToClear];
+      for (int nClear = 0; nClear < numToClear; nClear++){
+        bufferSnd[nTask][nClear] = u(mesh.nodesToExch(nTask, nClear))*v(mesh.nodesToExch(nTask, nClear));
+      }
+      MPI_Isend(bufferSnd[nTask], numToClear, MPI_DOUBLE, nTask, 0, MPI_COMM_WORLD, &requestSnd[nTask]);
+      MPI_Irecv(bufferRcv[nTask], numToClear, MPI_DOUBLE, nTask, 0, MPI_COMM_WORLD, &requestRcv[nTask]);
+    }
+  }
+
+  for (int nTask = 0; nTask < nbTasks; nTask++)
+  {
+    int numToClear = mesh.numNodesToExch(nTask);
+    if (numToClear > 0)
+    {
+      MPI_Wait(&requestRcv[nTask], &status);
+      for (int nClear = 0; nClear < numToClear; nClear++){
+        val += bufferRcv[nTask][nClear];
+        uu(mesh.nodesToExch(nTask, nClear)) = 0;
+        vv(mesh.nodesToExch(nTask, nClear)) = 0;
+      }
       delete bufferRcv[nTask];
       MPI_Wait(&requestSnd[nTask], &status);
       delete bufferSnd[nTask];
     }
   }
   
-  delete[] bufferSnd;
-  delete[] bufferRcv;
-  delete requestSnd;
-  delete requestRcv;
+  //calcul du produit scalaire 
+  r = uu.dot(vv);
+  
+  return r+val/2;
 }
+
+
