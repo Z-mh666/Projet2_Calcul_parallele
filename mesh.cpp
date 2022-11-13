@@ -129,7 +129,7 @@ void saveToMsh(Vector& vec, Mesh& mesh, string viewName, string fileName)
   posFile << "0" << endl; // ("Time")
   posFile << "4" << endl;
   posFile << "0" << endl; // ("timeStep")
-  posFile << "1" << endl; // ("numComp")
+  posFile << "1" << endl; // ("Comp")
   posFile << mesh.nbOfTri << endl;   // total number of elementNodeData in this file
   posFile << myRank << endl;
   for(int iTriLoc=0; iTriLoc<mesh.nbOfTri; iTriLoc++){
