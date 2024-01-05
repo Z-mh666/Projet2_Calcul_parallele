@@ -4,4 +4,4 @@ This project aims to parallelize the 2D finite element code using MPI. We will p
 
 -- Parallelize the inversion of the matrix (Jacobi method) and the calculation of L2 norm.
 
--- Parallelize the scalar product, as distributing tasks to processes may lead to double-counting the boundaries of each mesh part at least twice.
+-- Parallelize the conjugate gradient method, as distributing tasks to processes may lead to double-counting the boundaries of each mesh part at least twice.
